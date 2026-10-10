@@ -1,51 +1,11 @@
 [
   {
-    "id": 1,
-    "date": "2026-03-01",
-    "description": "Client Project - Phase 1",
-    "amount": 400000,
-    "type": "Credit",
-    "remarks": "Initial milestone payment"
-  },
-  {
-    "id": 2,
-    "date": "2026-03-05",
-    "description": "Cloud Infrastructure & Hosting",
-    "amount": 50000,
-    "type": "Debit",
-    "remarks": "AWS & Vercel server setup"
-  },
-  {
-    "id": 3,
-    "date": "2026-03-10",
-    "description": "Consulting Services",
-    "amount": 300000,
-    "type": "Credit",
-    "remarks": "Architecture consultation retainer"
-  },
-  {
     "id": 4,
     "date": "2026-03-15",
     "description": "Software Licenses & Tools",
     "amount": 25000,
     "type": "Debit",
     "remarks": "Figma and GitHub team subscriptions"
-  },
-  {
-    "id": 5,
-    "date": "2026-03-20",
-    "description": "Hardware Maintenance",
-    "amount": 35000,
-    "type": "Debit",
-    "remarks": "Office test equipment upgrade"
-  },
-  {
-    "id": 6,
-    "date": "2026-10-10",
-    "description": "bjhbkjl",
-    "amount": 0.62565,
-    "type": "Credit",
-    "remarks": "6596"
   },
   {
     "id": 7,
