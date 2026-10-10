@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const isVercel = Boolean(process.env.VERCEL);
 const SEED_FILE = path.join(__dirname, "data", "tracks.json");
 const DATA_FILE = isVercel ? path.join("/tmp", "tracks.json") : SEED_FILE;
