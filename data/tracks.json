@@ -38,5 +38,21 @@
     "amount": 35000,
     "type": "Debit",
     "remarks": "Office test equipment upgrade"
+  },
+  {
+    "id": 6,
+    "date": "2026-10-10",
+    "description": "bjhbkjl",
+    "amount": 0.62565,
+    "type": "Credit",
+    "remarks": "6596"
+  },
+  {
+    "id": 7,
+    "date": "2026-10-10",
+    "description": "dsvmldf3213",
+    "amount": 36153,
+    "type": "Credit",
+    "remarks": "dvfs"
   }
 ]

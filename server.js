@@ -8,8 +8,9 @@ import { fileURLToPath } from "url";
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DATA_FILE = path.join(__dirname, "data", "tracks.json");
+const isVercel = Boolean(process.env.VERCEL);
+const SEED_FILE = path.join(__dirname, "data", "tracks.json");
+const DATA_FILE = isVercel ? path.join("/tmp", "tracks.json") : SEED_FILE;
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -31,9 +32,16 @@ async function readTracks() {
     return JSON.parse(data);
   } catch (err) {
     if (err.code === "ENOENT") {
-      // If file doesn't exist, create it with empty array
-      await writeTracks([]);
-      return [];
+      // If file doesn't exist, try initializing from seed file
+      try {
+        const seedData = await fs.readFile(SEED_FILE, "utf-8");
+        const parsed = JSON.parse(seedData);
+        await writeTracks(parsed);
+        return parsed;
+      } catch (seedErr) {
+        await writeTracks([]);
+        return [];
+      }
     }
     console.error("Error reading tracks file:", err);
     return [];
@@ -234,7 +242,11 @@ app.delete("/tracks/:id", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Endpoint: http://localhost:${PORT}/tracks`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Endpoint: http://localhost:${PORT}/tracks`);
+  });
+}
+
+export default app;
