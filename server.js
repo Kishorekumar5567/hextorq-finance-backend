@@ -1,253 +1,83 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const isVercel = Boolean(process.env.VERCEL);
-const SEED_FILE = path.join(__dirname, "data", "tracks.json");
-const DATA_FILE = isVercel ? path.join("/tmp", "tracks.json") : SEED_FILE;
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const port = 8000;
 
-// Middleware
+app.use(express.json());
 app.use(
   cors({
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+  })
 );
-app.use(express.json());
 
-// Helper functions for reading and writing data safely
-async function readTracks() {
-  try {
-    const data = await fs.readFile(DATA_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      // If file doesn't exist, try initializing from seed file
-      try {
-        const seedData = await fs.readFile(SEED_FILE, "utf-8");
-        const parsed = JSON.parse(seedData);
-        await writeTracks(parsed);
-        return parsed;
-      } catch (seedErr) {
-        await writeTracks([]);
-        return [];
-      }
+const FILE = path.join(__dirname, "data", "tracks.json");
+let tracks = JSON.parse(fs.readFileSync(FILE, "utf-8"));
+
+// Display all
+app.get("/tracks", (req, res) => {
+  return res.json(tracks);
+});
+
+// Delete
+app.delete("/tracks/:id", (req, res) => {
+  const id = Number(req.params.id);
+  tracks = tracks.filter((t) => t.id !== id);
+
+  fs.writeFile(FILE, JSON.stringify(tracks), (err) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to delete the data" });
     }
-    console.error("Error reading tracks file:", err);
-    return [];
-  }
-}
-
-async function writeTracks(tracks) {
-  const dir = path.dirname(DATA_FILE);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(tracks, null, 2), "utf-8");
-}
-
-// Routes
-
-// 1. Health check & API Overview
-app.get("/", (req, res) => {
-  res.status(200).json({
-    status: "online",
-    message: "HexTorq Revenue & Cost Tracker API is running",
-    endpoints: {
-      "GET /tracks": "Get all track records",
-      "GET /tracks/:id": "Get a specific track by ID",
-      "POST /tracks": "Create a new track record",
-      "PUT /tracks/:id": "Update an existing track record",
-      "DELETE /tracks/:id": "Delete a track record and return updated list",
-      "GET /summary": "Get aggregate credit, debit, and net balance summary",
-    },
+    return res.json(tracks);
   });
 });
 
-// 2. GET all tracks
-app.get("/tracks", async (req, res) => {
-  try {
-    const tracks = await readTracks();
-    const { search, type } = req.query;
+// Add
+app.post("/tracks", (req, res) => {
+  const { date, description, amount, type, remarks } = req.body;
 
-    let filtered = [...tracks];
-
-    if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          (t.description && t.description.toLowerCase().includes(q)) ||
-          (t.remarks && t.remarks.toLowerCase().includes(q)) ||
-          (t.type && t.type.toLowerCase().includes(q)),
-      );
-    }
-
-    if (type) {
-      filtered = filtered.filter(
-        (t) => t.type && t.type.toLowerCase() === type.toLowerCase(),
-      );
-    }
-
-    res.status(200).json(filtered);
-  } catch (error) {
-    console.error("Failed to fetch tracks:", error);
-    res.status(500).json({ error: "Failed to retrieve tracks." });
+  if (!date || !description || !amount || !type || !remarks) {
+    return res.status(400).json({ message: "All fields required" });
   }
-});
 
-// 3. GET financial summary (totals)
-app.get("/summary", async (req, res) => {
-  try {
-    const tracks = await readTracks();
-    const creditTotal = tracks
-      .filter((t) => t.type && t.type.toLowerCase() === "credit")
-      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const id = Date.now();
+  tracks.push({ id, date, description, amount, type, remarks });
 
-    const debitTotal = tracks
-      .filter((t) => t.type && t.type.toLowerCase() === "debit")
-      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-    const netAmount = creditTotal - debitTotal;
-
-    res.status(200).json({
-      creditTotal,
-      debitTotal,
-      netAmount,
-      totalCount: tracks.length,
-    });
-  } catch (error) {
-    console.error("Failed to calculate summary:", error);
-    res.status(500).json({ error: "Failed to calculate summary." });
-  }
-});
-
-// 4. GET a single track by ID
-app.get("/tracks/:id", async (req, res) => {
-  try {
-    const tracks = await readTracks();
-    const track = tracks.find((t) => String(t.id) === String(req.params.id));
-
-    if (!track) {
-      return res.status(404).json({ error: "Track record not found." });
+  fs.writeFile(FILE, JSON.stringify(tracks), (err) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to save the data" });
     }
-
-    res.status(200).json(track);
-  } catch (error) {
-    console.error("Failed to fetch track:", error);
-    res.status(500).json({ error: "Failed to retrieve track." });
-  }
-});
-
-// 5. POST a new track
-app.post("/tracks", async (req, res) => {
-  try {
-    const { date, description, amount, type, remarks } = req.body;
-
-    if (!date || !description || amount === undefined || !type) {
-      return res.status(400).json({
-        error: "date, description, amount, and type are required fields.",
-      });
-    }
-
-    const tracks = await readTracks();
-    const newId =
-      tracks.length > 0 ? Math.max(...tracks.map((t) => Number(t.id) || 0)) + 1 : 1;
-
-    const newTrack = {
-      id: newId,
-      date: String(date).trim(),
-      description: String(description).trim(),
-      amount: Number(amount) || 0,
-      type: String(type).trim(),
-      remarks: remarks ? String(remarks).trim() : "",
-    };
-
-    tracks.push(newTrack);
-    await writeTracks(tracks);
-
-    res.status(201).json(newTrack);
-  } catch (error) {
-    console.error("Failed to create track:", error);
-    res.status(500).json({ error: "Failed to create track." });
-  }
-});
-
-// 6. PUT update an existing track
-app.put("/tracks/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { date, description, amount, type, remarks } = req.body;
-
-    const tracks = await readTracks();
-    const index = tracks.findIndex((t) => String(t.id) === String(id));
-
-    if (index === -1) {
-      return res.status(404).json({ error: "Track record not found." });
-    }
-
-    const existing = tracks[index];
-    const updatedTrack = {
-      ...existing,
-      date: date !== undefined ? String(date).trim() : existing.date,
-      description:
-        description !== undefined
-          ? String(description).trim()
-          : existing.description,
-      amount: amount !== undefined ? Number(amount) : existing.amount,
-      type: type !== undefined ? String(type).trim() : existing.type,
-      remarks:
-        remarks !== undefined ? String(remarks).trim() : existing.remarks,
-    };
-
-    tracks[index] = updatedTrack;
-    await writeTracks(tracks);
-
-    res.status(200).json(updatedTrack);
-  } catch (error) {
-    console.error("Failed to update track:", error);
-    res.status(500).json({ error: "Failed to update track." });
-  }
-});
-
-// 7. DELETE a track
-// Note: Frontend App.jsx calls setadata(res.data) & setfilterdata(res.data)
-// expecting the updated array of tracks back!
-app.delete("/tracks/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const tracks = await readTracks();
-    const initialLength = tracks.length;
-
-    const updatedTracks = tracks.filter((t) => String(t.id) !== String(id));
-
-    if (updatedTracks.length === initialLength) {
-      return res.status(404).json({ error: "Track record not found." });
-    }
-
-    await writeTracks(updatedTracks);
-
-    // Returning the updated list of tracks directly for frontend compatibility
-    res.status(200).json(updatedTracks);
-  } catch (error) {
-    console.error("Failed to delete track:", error);
-    res.status(500).json({ error: "Failed to delete track." });
-  }
-});
-
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Endpoint: http://localhost:${PORT}/tracks`);
+    return res.json({ message: "Data Added successfully" });
   });
-}
+});
 
-export default app;
+// Edit
+app.patch("/tracks/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const { date, description, amount, type, remarks } = req.body;
+
+  if (!date || !description || !amount || !type || !remarks) {
+    return res.status(400).json({ message: "All fields required" });
+  }
+
+  const index = tracks.findIndex((t) => t.id === id);
+  if (index === -1) {
+    return res.status(404).json({ message: "Data not found" });
+  }
+
+  tracks[index] = { id, date, description, amount, type, remarks };
+
+  fs.writeFile(FILE, JSON.stringify(tracks), (err) => {
+    if (err) {
+      return res.status(500).json({ message: "Failed to update the data" });
+    }
+    return res.json({ message: "Data updated successfully" });
+  });
+});
+
+app.listen(port, () => {
+  console.log(`App is running in port ${port}`);
+});

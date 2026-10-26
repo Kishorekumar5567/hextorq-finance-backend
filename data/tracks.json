@@ -1,18 +1,1 @@
-[
-  {
-    "id": 4,
-    "date": "2026-03-15",
-    "description": "Software Licenses & Tools",
-    "amount": 25000,
-    "type": "Debit",
-    "remarks": "Figma and GitHub team subscriptions"
-  },
-  {
-    "id": 7,
-    "date": "2026-10-10",
-    "description": "dsvmldf3213",
-    "amount": 36153,
-    "type": "Credit",
-    "remarks": "dvfs"
-  }
-]
+[{"id":4,"date":"2026-03-15","description":"Software Licenses & Tools","amount":25000,"type":"Debit","remarks":"Figma and GitHub team subscriptions"},{"id":7,"date":"2026-10-10","description":"dsvmldf3213","amount":36153,"type":"Credit","remarks":"dvfs"},{"id":8,"date":"2026-10-26","description":"kggiuj","amount":56161,"type":"Debit","remarks":"jkjijik"},{"id":1793013323406,"date":"2026-10-13","description":"Freelance Payment","amount":"2652165","type":"Debit","remarks":"Figma and GitHub team subscriptions"}]
